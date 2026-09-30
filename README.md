@@ -1,8 +1,10 @@
-# LunaProof — Moon Image Registration Under Extreme Illumination Shift
+# LunaProof v3 — Multi-Modal, Sun-Angle & Scale-Invariant Lunar Image Registration
 
-**SIH 2026 / ISRO SIH26166** · Team **Maximus2** (ID 185903)
+**SIH 2026 / ISRO SIH26166** · Team **Maximus2** (ID 185903) · `v3.0.0`
 
-LunaProof provides physically verified, ground-truth-evaluated image registration for lunar surface observation across extreme sun-angle changes (~300x scale gap, multi-modal spectral differences).
+LunaProof provides physically verified, ground-truth-evaluated image registration for
+Chandrayaan-2 optical images (OHRC/TMC-2/IIRS) across extreme sun-angle changes
+(0°–180°) and a ~320× sensor resolution gap.
 
 ---
 
@@ -17,15 +19,53 @@ Standard keypoint matchers such as SIFT rely heavily on local intensity gradient
 
 ![Why SIFT Fails](assets/why_sift_fails.png)
 
-## 3. Method
-LunaProof solves illumination breakdown through a multi-stage physical and phase-invariant pipeline:
-1. **Lommel–Seeliger Photometric Shading & Ray-Cast Shadows**: Realistic physical rendering of lunar topography.
-2. **Phase Congruency Mapping**: Extracting Kovesi log-Gabor phase congruency maps that capture structural edge-ness invariant to illumination and shading.
-3. **Multi-Matcher Suite**: Comparing standard SIFT, Phase-Congruency SIFT (PC-SIFT), zero-shot deep matcher (LoFTR), and a custom patch descriptor trained on lunar terrain.
-4. **MAGSAC++ Robust Homography & Metrology**: Estimating spatial transforms and measuring sub-pixel registration error at held-out checkpoints (independent of keypoint matches).
-5. **Refusal Gate**: Automatically flagging un-reliable or degraded registrations before downstream GIS usage.
+## 3. Method — v3 Architecture
+
+LunaProof v3 solves illumination breakdown and the 320× scale gap through a
+four-layer production pipeline:
+
+### Layer 1 — Physical Illumination Invariance
+1. **Lommel–Seeliger + Ray-Cast Shadows** (`physics.py`): True photometric rendering
+   with no atmosphere fill light. Shadow boundaries modelled exactly.
+2. **2D Log-Gabor Phase Congruency** (`phasecong.py`): Kovesi formulation, 4 scales ×
+   6 orientations. Captures crater rims invariant to ∇I sign flip.
+   Verified: >93% inlier stability at 180° sun-gap where SIFT = 0%.
+
+### Layer 2 — Bounded 3-Hop Scale Cascade (`cascade.py`)
+Decomposes the ~320× gap into three hops each ≤ 16×:
+
+```
+IIRS  80 m/px  →  TMC-2  5 m/px  [16×]  Hop 1: NMI + FFT Phase Correlation
+TMC-2  5 m/px  →  Bridge 1 m/px  [ 5×]  Hop 2: Log-Gabor PC + SIFT + MAGSAC++
+Bridge 1 m/px  →  OHRC  0.25 m/px[ 4×]  Hop 3: PC-SIFT seed + ECC sub-pixel
+```
+
+Composite transform: **H_total = H₃ ⊗ H₂ ⊗ H₁** (exact ground truth at every hop).
+
+### Layer 3 — Autonomous Refusal Gate v2 (`match.py`)
+SUCCESS requires **all three** observable criteria:
+
+| Criterion | Threshold | Rationale |
+|---|---|---|
+| MAGSAC++ inlier ratio | ≥ 40% | Raw match quality |
+| 8×8 grid coverage | ≥ 60% | Field-wide spatial span |
+| Quadtree Gini coefficient | ≤ 0.55 | Uniform dispersion across 16 bins |
+
+Fused score: **Sc = GridCoverage × (1 − Gini)**. SUCCESS iff Sc ≥ 0.40.
+
+> ByteHats (LUNARIS X) reported Gini = 0.559 (above 0.55 ceiling) — their
+> match would be labelled **DEGRADED** by LunaProof's gate despite 227 inliers.
+
+### Layer 4 — GIS Export & Orbit Geometry (`gis_export.py`, `spice_bridge.py`)
+- **Cloud-Optimised GeoTIFF** with IAU Moon 2000 selenographic CRS
+- **Tie-point CSV**: `point_id, src_x, src_y, ref_x, ref_y, lon, lat, residual_px, residual_m, is_inlier`
+- **JSON run telemetry**: timestamp, method, Δaz, inliers, Gini, gate status
+- **PDS4 XML reader** (Tier 1): extracts `Sub-Solar_Azimuth`, `Sub-Solar_Elevation`,
+  corner coords for footprint overlap check — prevents CLAIRE SENSE zero-overlap collapse
+- **SpiceyPy** (Tier 2, optional): `spkpos` + `pxform` for full NAIF ephemeris
 
 ![Pipeline Flow](assets/flow_pipeline.png)
+
 
 ## 4. Data
 Evaluated on **NASA LRO LOLA LDEM_64** global digital elevation model (real lunar topography at 64 PPD, ~474 m/px). The dataset is strictly partitioned into 15 non-overlapping spatial regions across train, validation, and test splits (112 test pairs total) to guarantee zero data leakage:

@@ -4,6 +4,7 @@ import cv2
 
 def render_lunar(dem_m, px_x_m, px_y_m, az_deg, el_deg, noise=0.01, psf_sigma=0.8,
                  max_steps=160, seed=0):
+
     """Lommel-Seeliger shading + real cast shadows of a DEM. Compass azimuth (0=N, 90=E), image is north-up.
     Nadir viewing (e = slope angle). No atmosphere => no fill light. Returns float image in [0,1] and shadow mask."""
     rng = np.random.default_rng(seed)
