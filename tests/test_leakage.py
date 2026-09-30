@@ -1,3 +1,4 @@
+import pytest
 from lunaproof.dem_io import boxes_overlap
 
 TILES = {   # name: (lat, lon_east, role)
@@ -9,14 +10,16 @@ TILES = {   # name: (lat, lon_east, role)
  'aristarchus': (23.7, 312.5, 'test'), 'orientale': (-19, 265, 'test'),
 }
 
-SIZE = 640
-PPD = 64
-deg = SIZE / PPD
+def test_tile_roles_no_leakage():
+    SIZE = 640
+    PPD = 64
+    deg = SIZE / PPD
 
-def test_no_leakage_between_roles():
     names = list(TILES)
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
-            a, b = TILES[names[i]], TILES[names[j]]
-            if a[2] != b[2]:
-                assert not boxes_overlap(a, b, deg + 1), f"Role overlap detected between {names[i]} ({a[2]}) and {names[j]} ({b[2]})"
+            name_a, name_b = names[i], names[j]
+            tile_a, tile_b = TILES[name_a], TILES[name_b]
+            role_a, role_b = tile_a[2], tile_b[2]
+            if role_a != role_b:
+                assert not boxes_overlap(tile_a, tile_b, deg + 1), f"Tiles of different roles overlap: {name_a} ({role_a}) / {name_b} ({role_b})"

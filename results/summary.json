@@ -1,0 +1,289 @@
+{
+  "dem_source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.img",
+  "dem": "LRO LOLA LDEM_64 (~474 m/px)",
+  "tiles": {
+    "serenitatis": [
+      28,
+      18,
+      "train"
+    ],
+    "imbrium": [
+      33,
+      344.4,
+      "train"
+    ],
+    "fecunditatis": [
+      -8,
+      51,
+      "train"
+    ],
+    "nubium": [
+      -21,
+      328,
+      "train"
+    ],
+    "procellarum": [
+      0,
+      300,
+      "train"
+    ],
+    "descartes_hl": [
+      -12,
+      16,
+      "train"
+    ],
+    "farside_a": [
+      0,
+      200,
+      "train"
+    ],
+    "farside_b": [
+      -30,
+      140,
+      "train"
+    ],
+    "hadley": [
+      26,
+      3,
+      "train"
+    ],
+    "tranquillitatis": [
+      8.5,
+      31.4,
+      "val"
+    ],
+    "south_highland": [
+      -35,
+      25,
+      "val"
+    ],
+    "tycho": [
+      -43.3,
+      348.9,
+      "test"
+    ],
+    "copernicus": [
+      9.6,
+      339.9,
+      "test"
+    ],
+    "aristarchus": [
+      23.7,
+      312.5,
+      "test"
+    ],
+    "orientale": [
+      -19,
+      265,
+      "test"
+    ]
+  },
+  "size_px": 640,
+  "gaps": [
+    0,
+    30,
+    60,
+    90,
+    120,
+    150,
+    180
+  ],
+  "el_cases": [
+    "high sun (35/30 deg)",
+    "low sun (12/10 deg)"
+  ],
+  "seeds_per_cell": 2,
+  "pairs_total": 112,
+  "train_val_history": [
+    {
+      "epoch": 1,
+      "train_loss": 5.091548258463542,
+      "val_top1": 0.04726252487550179
+    },
+    {
+      "epoch": 2,
+      "train_loss": 4.319625784556071,
+      "val_top1": 0.1112196184694767
+    },
+    {
+      "epoch": 3,
+      "train_loss": 3.5843964576721192,
+      "val_top1": 0.2215556800365448
+    },
+    {
+      "epoch": 4,
+      "train_loss": 3.0905734793345134,
+      "val_top1": 0.2528754348556201
+    },
+    {
+      "epoch": 5,
+      "train_loss": 2.808841390609741,
+      "val_top1": 0.2733522454897563
+    },
+    {
+      "epoch": 6,
+      "train_loss": 2.6145476277669273,
+      "val_top1": 0.31591796875
+    },
+    {
+      "epoch": 7,
+      "train_loss": 2.417119162877401,
+      "val_top1": 0.3098105788230896
+    },
+    {
+      "epoch": 8,
+      "train_loss": 2.2700783729553224,
+      "val_top1": 0.3322172611951828
+    },
+    {
+      "epoch": 9,
+      "train_loss": 2.142148806254069,
+      "val_top1": 0.3458271324634552
+    },
+    {
+      "epoch": 10,
+      "train_loss": 2.0401191091537476,
+      "val_top1": 0.3533063630263011
+    },
+    {
+      "epoch": 11,
+      "train_loss": 1.935380500157674,
+      "val_top1": 0.360196553170681
+    },
+    {
+      "epoch": 12,
+      "train_loss": 1.8710385576883952,
+      "val_top1": 0.370938740670681
+    },
+    {
+      "epoch": 13,
+      "train_loss": 1.7922617387771607,
+      "val_top1": 0.3771236365040143
+    },
+    {
+      "epoch": 14,
+      "train_loss": 1.712124177614848,
+      "val_top1": 0.3711712559064229
+    },
+    {
+      "epoch": 15,
+      "train_loss": 1.6589576530456542,
+      "val_top1": 0.3859282011787097
+    },
+    {
+      "epoch": 16,
+      "train_loss": 1.6063407691319784,
+      "val_top1": 0.384788878262043
+    },
+    {
+      "epoch": 17,
+      "train_loss": 1.5466354449590047,
+      "val_top1": 0.3854166666666667
+    },
+    {
+      "epoch": 18,
+      "train_loss": 1.4894790919621785,
+      "val_top1": 0.3876488109429677
+    },
+    {
+      "epoch": 19,
+      "train_loss": 1.444217947324117,
+      "val_top1": 0.3892299110690753
+    },
+    {
+      "epoch": 20,
+      "train_loss": 1.3996867259343466,
+      "val_top1": 0.3912992949287097
+    },
+    {
+      "epoch": 21,
+      "train_loss": 1.3609486134847004,
+      "val_top1": 0.3997628365953763
+    },
+    {
+      "epoch": 22,
+      "train_loss": 1.3207864252726238,
+      "val_top1": 0.3996930817763011
+    },
+    {
+      "epoch": 23,
+      "train_loss": 1.3020120811462403,
+      "val_top1": 0.3925858760873477
+    },
+    {
+      "epoch": 24,
+      "train_loss": 1.2820399936040243,
+      "val_top1": 0.3955233146746953
+    },
+    {
+      "epoch": 25,
+      "train_loss": 1.274737146695455,
+      "val_top1": 0.3963526164491971
+    }
+  ],
+  "best_val_top1": 0.3997628365953763,
+  "success_by_method": {
+    "LoFTR (pretrained)": 0.732,
+    "PC + learned descriptor": 0.982,
+    "PC-SIFT": 0.884,
+    "SIFT": 0.286
+  },
+  "success_by_method_gap": {
+    "0": {
+      "LoFTR (pretrained)": 1.0,
+      "PC + learned descriptor": 1.0,
+      "PC-SIFT": 1.0,
+      "SIFT": 1.0
+    },
+    "30": {
+      "LoFTR (pretrained)": 1.0,
+      "PC + learned descriptor": 1.0,
+      "PC-SIFT": 1.0,
+      "SIFT": 1.0
+    },
+    "60": {
+      "LoFTR (pretrained)": 1.0,
+      "PC + learned descriptor": 1.0,
+      "PC-SIFT": 0.938,
+      "SIFT": 0.0
+    },
+    "90": {
+      "LoFTR (pretrained)": 0.875,
+      "PC + learned descriptor": 0.938,
+      "PC-SIFT": 0.625,
+      "SIFT": 0.0
+    },
+    "120": {
+      "LoFTR (pretrained)": 0.5,
+      "PC + learned descriptor": 0.938,
+      "PC-SIFT": 0.625,
+      "SIFT": 0.0
+    },
+    "150": {
+      "LoFTR (pretrained)": 0.312,
+      "PC + learned descriptor": 1.0,
+      "PC-SIFT": 1.0,
+      "SIFT": 0.0
+    },
+    "180": {
+      "LoFTR (pretrained)": 0.438,
+      "PC + learned descriptor": 1.0,
+      "PC-SIFT": 1.0,
+      "SIFT": 0.0
+    }
+  },
+  "gate_reliability": {
+    "DEGRADED": 0.75,
+    "REFUSED": 0.157,
+    "SUCCESS": 0.936
+  },
+  "limits": [
+    "coarse 474 m/px DEM, not OHRC",
+    "similarity transform only",
+    "no albedo variation",
+    "no SPICE/PDS4 ingestion",
+    "learned descriptor is not rotation-invariant beyond +-20 deg"
+  ],
+  "quick_mode": false,
+  "synthetic_debug": false
+}

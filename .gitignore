@@ -1,28 +1,10 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .pytest_cache/
-*.egg-info/
-dist/
-build/
-.venv/
-env/
-
-# Data and Models
+.coverage
 *.IMG
 *.img
 *.pt
-*.pth
-*.bin
 *.zip
-lunaproof_results/
-results/
 scratch/
-
-# IDE & System
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db

@@ -1,6 +1,6 @@
+import numpy as np
 import os
 import math
-import numpy as np
 import requests
 
 MOON_R = 1737400.0

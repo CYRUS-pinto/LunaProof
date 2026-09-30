@@ -35,3 +35,6 @@ def render_lunar(dem_m, px_x_m, px_y_m, az_deg, el_deg, noise=0.01, psf_sigma=0.
     lo, hi = np.percentile(img, [1, 99.5])
     img = np.clip((img - lo) / (hi - lo + 1e-6), 0, 1)
     return img.astype(np.float32), shadow
+
+def to_u8(x):
+    return np.clip(x * 255, 0, 255).astype(np.uint8)

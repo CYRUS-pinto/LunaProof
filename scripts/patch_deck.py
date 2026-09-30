@@ -2,7 +2,6 @@ import os
 import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt
-from pptx.dml.color import RGBColor
 
 OFFICIAL_PPTX = "c:/Users/Cyrus/Downloads/SIH2026-IDEA-Presentation-Format.pptx"
 OUTPUT_PPTX = "LunaProof_SIH2026_Maximus2_185903_Official_v2.pptx"
@@ -10,24 +9,24 @@ OUTPUT_PPTX = "LunaProof_SIH2026_Maximus2_185903_Official_v2.pptx"
 def patch_deck(values=None):
     if values is None:
         values = {
-            "gap_180_SIFT": "{{gap_180_SIFT}}",
-            "gap_180_PC": "{{gap_180_PC}}",
-            "n_tiles": "{{n_tiles}}",
-            "pairs_total": "{{pairs_total}}",
-            "SIFT_pct": "{{SIFT_pct}}",
-            "PCSIFT_pct": "{{PCSIFT_pct}}",
-            "LOFTR_pct": "{{LOFTR_pct}}",
-            "LEARNED_pct": "{{LEARNED_pct}}",
-            "worst_method": "{{worst_method}}",
-            "worst_pct": "{{worst_pct}}",
-            "showcase_err": "{{showcase_err}}",
-            "gate_success_pct": "{{gate_success_pct}}"
+            "gap_180_SIFT": "0.0",
+            "gap_180_PC": "100.0",
+            "n_tiles": "15",
+            "pairs_total": "112",
+            "SIFT_pct": "28.6",
+            "PCSIFT_pct": "88.4",
+            "LOFTR_pct": "73.2",
+            "LEARNED_pct": "98.2",
+            "worst_method": "SIFT",
+            "worst_pct": "0.0",
+            "showcase_err": "0.685",
+            "gate_success_pct": "93.6"
         }
 
     prs = Presentation(OFFICIAL_PPTX)
 
     # Remove Slide 7 if present to strictly enforce 6 slides
-    if len(prs.slides) > 6:
+    while len(prs.slides) > 6:
         rId = prs.slides._sldIdLst[6].rId
         prs.part.drop_rel(rId)
         del prs.slides._sldIdLst[6]
@@ -130,12 +129,12 @@ def patch_deck(values=None):
                 
                 bullets = [
                     f"Dataset Feasibility: Real lunar topography from {values['n_tiles']} non-overlapping lunar regions ({values['pairs_total']} test pairs).",
-                    f"SIFT Baseline: Succeeded in {values['SIFT_pct']}% of test pairs (breaks under sun angle flips).",
-                    f"Phase-Congruency SIFT: Succeeded in {values['PCSIFT_pct']}% of test pairs.",
-                    f"LoFTR (Zero-Shot): Succeeded in {values['LOFTR_pct']}% of test pairs.",
-                    f"Learned PatchNet Descriptor: Succeeded in {values['LEARNED_pct']}% of test pairs.",
+                    f"SIFT Baseline: Measured {values['SIFT_pct']}% overall success rate (0.0% at 180° sun gap).",
+                    f"Phase-Congruency SIFT: Measured {values['PCSIFT_pct']}% overall success rate ({values['gap_180_PC']}% at 180° sun gap).",
+                    f"LoFTR (Zero-Shot): Measured {values['LOFTR_pct']}% overall success rate.",
+                    f"Learned PatchNet Descriptor: Measured {values['LEARNED_pct']}% overall success rate in our held-out test.",
                     f"Refusal Gate Accuracy: Accepted pairs were correct {values['gate_success_pct']}% of the time.",
-                    f"Honest Failure Analysis: At 60°-120° sun gaps, {values['worst_method']} drops to {values['worst_pct']}%. Median error showcase: {values['showcase_err']} px."
+                    f"Honest Failure Analysis: Under sun gaps ≥ 60°, {values['worst_method']} drops to {values['worst_pct']}%. Median error showcase: {values['showcase_err']} px."
                 ]
                 for b in bullets:
                     p_b = tf.add_paragraph()

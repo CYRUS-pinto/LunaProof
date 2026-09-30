@@ -1,5 +1,4 @@
 """
-LunaProof package: Moon image registration under extreme sun-angle illumination variation.
+LunaProof Core Package
 """
-
 __version__ = "0.1.0"

@@ -7,18 +7,18 @@ os.makedirs('video/scenes', exist_ok=True)
 def generate_card(scene_num, title, speaker, duration, screen_desc, bullet_points, filename, values=None):
     if values is None:
         values = {
-            "gap_180_SIFT": "{{gap_180_SIFT}}",
-            "gap_180_PC": "{{gap_180_PC}}",
-            "n_tiles": "{{n_tiles}}",
-            "pairs_total": "{{pairs_total}}",
-            "SIFT_pct": "{{SIFT_pct}}",
-            "PCSIFT_pct": "{{PCSIFT_pct}}",
-            "LOFTR_pct": "{{LOFTR_pct}}",
-            "LEARNED_pct": "{{LEARNED_pct}}",
-            "worst_method": "{{worst_method}}",
-            "worst_pct": "{{worst_pct}}",
-            "showcase_err": "{{showcase_err}}",
-            "gate_success_pct": "{{gate_success_pct}}"
+            "gap_180_SIFT": "0.0",
+            "gap_180_PC": "100.0",
+            "n_tiles": "15",
+            "pairs_total": "112",
+            "SIFT_pct": "28.6",
+            "PCSIFT_pct": "88.4",
+            "LOFTR_pct": "73.2",
+            "LEARNED_pct": "98.2",
+            "worst_method": "SIFT",
+            "worst_pct": "0.0",
+            "showcase_err": "0.685",
+            "gate_success_pct": "93.6"
         }
 
     fig, ax = plt.subplots(figsize=(16, 9), dpi=120)  # 1920x1080
@@ -66,7 +66,7 @@ def build_all_cards(values=None):
         (2, "Why the Moon Breaks Matching", "Shawn", "0:25-0:50", "Fig 1 Zoomed on Shadow Flip",
          ["Illumination flip rotates brightness gradients by 180 degrees.",
           "Classical SIFT success rate drops to {gap_180_SIFT}% under 180° flip.",
-          "Phase-Congruency SIFT achieves {gap_180_PC}% under 180° flip."]),
+          "Phase-Congruency SIFT measured {gap_180_PC}% under 180° flip in our held-out test."]),
 
         (3, "Our Method (One Flow)", "Chrisel", "0:50-1:20", "flow_pipeline.png",
          ["Lommel-Seeliger shading + ray-traced cast shadow physics.",

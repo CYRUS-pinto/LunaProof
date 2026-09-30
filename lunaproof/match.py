@@ -1,10 +1,7 @@
-import numpy as np
 import cv2
-from lunaproof.physics import render_lunar
-from lunaproof.phasecong import phase_congruency, pc_to_u8
-
-def to_u8(x):
-    return np.clip(x * 255, 0, 255).astype(np.uint8)
+import numpy as np
+from .physics import render_lunar, to_u8
+from .phasecong import phase_congruency, pc_to_u8
 
 def make_pair(dem, px_x, px_y, az_ref, el_ref, az_src, el_src, rot_deg, scale, seed=0):
     ref, _ = render_lunar(dem, px_x, px_y, az_ref, el_ref, seed=seed)
