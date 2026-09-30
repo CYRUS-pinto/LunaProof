@@ -73,7 +73,7 @@ def patch_deck(values=None):
                 tf = shape.text_frame
                 tf.clear()
                 p = tf.paragraphs[0]
-                p.text = "Proposed Solution & Core Technical Innovation"
+                p.text = "Proposed Solution & Mission-Grade Innovation"
                 p.font.bold = True
                 p.font.size = Pt(16)
                 
@@ -123,23 +123,23 @@ def patch_deck(values=None):
                 tf = shape.text_frame
                 tf.clear()
                 p0 = tf.paragraphs[0]
-                p0.text = "Rigorous Held-Out Benchmark Results & Failure Analysis"
+                p0.text = "Rigorous Held-Out Benchmark & Competitive Contrast"
                 p0.font.bold = True
                 p0.font.size = Pt(16)
                 
                 bullets = [
-                    f"Dataset Feasibility: Real lunar topography from {values['n_tiles']} non-overlapping lunar regions ({values['pairs_total']} test pairs).",
+                    f"Full Sun-Angle Sweep (0°–180°): Unlike single-orbit demos (0.76° delta), we benchmark across {values['n_tiles']} non-overlapping regions ({values['pairs_total']} test pairs).",
                     f"SIFT Baseline: Measured {values['SIFT_pct']}% overall success rate (0.0% at 180° sun gap).",
                     f"Phase-Congruency SIFT: Measured {values['PCSIFT_pct']}% overall success rate ({values['gap_180_PC']}% at 180° sun gap).",
                     f"LoFTR (Zero-Shot): Measured {values['LOFTR_pct']}% overall success rate.",
                     f"Learned PatchNet Descriptor: Measured {values['LEARNED_pct']}% overall success rate in our held-out test.",
-                    f"Refusal Gate Accuracy: Accepted pairs were correct {values['gate_success_pct']}% of the time.",
+                    f"Mission-Grade Refusal Gate: Accepted pairs were correct {values['gate_success_pct']}% of the time, automatically rejecting degraded inputs.",
                     f"Honest Failure Analysis: Under sun gaps ≥ 60°, {values['worst_method']} drops to {values['worst_pct']}%. Median error showcase: {values['showcase_err']} px."
                 ]
                 for b in bullets:
                     p_b = tf.add_paragraph()
                     p_b.text = "• " + b
-                    p_b.font.size = Pt(12)
+                    p_b.font.size = Pt(11.5)
 
     # --- Slide 5: Impact and Benefits
     slide5 = prs.slides[4]

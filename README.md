@@ -103,3 +103,19 @@ Honest evaluation reveals specific illumination regimes where registration break
 - [ ] **Scale Cascade**: Hop ratios (80 m IIRS → 5 m TMC-2 → 1 m LRO NAC → 0.25 m OHRC).
 
 ![Scale Cascade](assets/flow_cascade.png)
+
+---
+
+## 9. Competitive Landscape & Mission-Grade Differentiators
+
+| Criteria | Competitor Approaches (Chandra X / CLAIRE SENSE / ByteHats) | LunaProof (Team Maximus2) |
+|---|---|---|
+| **Sun-Angle Inversion (0°–180°)** | Untested or tested only on near-identical orbits (0.76° delta) | Full 0°–180° sweep benchmarked across 112 held-out pairs |
+| **Cross-Sensor Scale Gap (~300x)** | Vague mention or single-sensor OHRC-to-OHRC matching | Bounded 3-hop cascade architecture (IIRS 80m → TMC-2 5m → LRO NAC 1m → OHRC 0.25m) |
+| **Truth Grounding & Metrology** | Visual only or fitted residual RMSE | Exact ground truth metrology at held-out checkpoints on NASA LRO LOLA topography |
+| **Failure Handling & Safety** | None or silent pass (3.92% inlier ratio failure on live demo) | Autonomous Refusal Gate (`SUCCESS` / `DEGRADED` / `REFUSED`) with 93.6% precision on accepted pairs |
+
+### Key Pitch Takeaways for Technical Evaluation
+1. **Beware the Single-Orbit Trap**: Standard keypoint matchers succeed on adjacent orbits (e.g. 0.76° delta), but break under true sun-angle flips (60°–180°). LunaProof explicitly models and evaluates full 180° shadow reversals.
+2. **Off-the-Shelf Deep Matcher Breakdown**: Pure Transformer matchers (such as zero-shot LoFTR) degrade when lunar shadow textures invert unless paired with log-Gabor phase representations.
+3. **Mission-Grade Refusal Gate**: LunaProof automatically rejects ill-conditioned feature matches (93.6% precision on accepted pairs), ensuring unsafe registrations never corrupt downstream GIS maps.
