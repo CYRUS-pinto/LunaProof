@@ -238,3 +238,16 @@ def test_resolve_geometry_geometry_pair_fields():
     assert hasattr(pair, 'overlap_frac')
     assert 0.0 <= pair.overlap_frac <= 1.0
     assert pair.delta_az_deg == pytest.approx(90.0, abs=0.01)
+
+
+def test_sha256_fingerprint():
+    from lunaproof.gis_export import sha256_fingerprint
+    img = np.zeros((64, 64), dtype=np.uint8)
+    h1 = sha256_fingerprint(img)
+    assert len(h1) == 64
+    assert isinstance(h1, str)
+    
+    # Check that metadata alters hash deterministically
+    h2 = sha256_fingerprint(img, {"sensor": "OHRC"})
+    assert h1 != h2
+

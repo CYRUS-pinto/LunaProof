@@ -3,8 +3,23 @@ __pycache__/
 *$py.class
 .pytest_cache/
 .coverage
+
+# Large runtime-generated files (regenerated in Colab)
+train_pairs.npz
 *.IMG
 *.img
+cache_pds/
+
+# Model weights and results (too large or auto-generated)
 *.pt
 *.zip
+lunaproof_results*.zip
+lunaproof_export*/
+
+# Smoke test artifacts
+_smoke_*.png
+_smoke_panel_*.png
+_cell1_source.json
+fig1_*.png
+
 scratch/

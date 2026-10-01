@@ -23,6 +23,7 @@ Team Maximus2 (ID 185903) | SIH26166
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -38,6 +39,32 @@ try:
     _HAVE_RASTERIO = True
 except ImportError:
     _HAVE_RASTERIO = False
+
+
+# ---------------------------------------------------------------------------
+# SHA-256 Data Provenance (absorbed from ByteHats LUNARIS X)
+# ---------------------------------------------------------------------------
+
+def sha256_fingerprint(img: np.ndarray, metadata: Optional[dict] = None) -> str:
+    """
+    Compute a SHA-256 cryptographic fingerprint of an image array and optional
+    metadata string, providing tamper-evident data provenance.
+
+    Absorbed from ByteHats (LUNARIS X) who used SHA-256 fingerprinting for
+    audit-trail compliance in their SIH submission.
+
+    Args:
+        img:      Image array (any dtype, any shape).
+        metadata: Optional dict whose JSON representation is hashed alongside.
+
+    Returns:
+        Hex digest string (64 chars).
+    """
+    h = hashlib.sha256()
+    h.update(img.tobytes())
+    if metadata:
+        h.update(json.dumps(metadata, sort_keys=True, default=str).encode())
+    return h.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +218,13 @@ def export_tiepoints_csv(
 def export_telemetry(
     run_dict:    dict,
     output_path: str,
+    img_ref:     Optional[np.ndarray] = None,
+    img_src:     Optional[np.ndarray] = None,
 ) -> str:
     """
     Write the registration run diagnostics as an indented JSON file.
+    Automatically adds SHA-256 fingerprints for both images when provided
+    (data provenance, absorbed from ByteHats LUNARIS X).
 
     Recommended keys in run_dict:
         timestamp_utc, method, sun_az_ref_deg, sun_az_src_deg, delta_az_deg,
@@ -204,12 +235,16 @@ def export_telemetry(
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-    # Always stamp with current UTC time
     out = {
-        "timestamp_utc":  datetime.now(timezone.utc).isoformat(),
-        "lunaproof_version": "3.0.0",
+        "timestamp_utc":       datetime.now(timezone.utc).isoformat(),
+        "lunaproof_version":   "3.0.0",
         **run_dict,
     }
+    # SHA-256 provenance fingerprints (ByteHats absorption)
+    if img_ref is not None:
+        out["sha256_ref"] = sha256_fingerprint(img_ref)
+    if img_src is not None:
+        out["sha256_src"] = sha256_fingerprint(img_src)
 
     with open(output_path, "w") as f:
         json.dump(out, f, indent=4, default=_json_safe)

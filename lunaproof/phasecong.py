@@ -57,3 +57,12 @@ def pc_to_u8(pc, blur=2.0):
     pc = cv2.GaussianBlur(pc.astype(np.float32), (0, 0), blur)
     hi = np.percentile(pc, 99.5) + 1e-9
     return np.clip(pc / hi * 255, 0, 255).astype(np.uint8)
+
+def extract_phase_congruency(img: np.ndarray) -> np.ndarray:
+    if img.dtype != np.uint8:
+        img_u8 = np.clip(img * 255 if img.max() <= 1.0 else img, 0, 255).astype(np.uint8)
+    else:
+        img_u8 = img
+    pc, _ = phase_congruency(img_u8)
+    return pc_to_u8(pc)
+

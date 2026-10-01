@@ -74,6 +74,80 @@ def spatial_confidence(
     sc     = cov * (1.0 - gini)
     return dict(grid_coverage=cov, gini=gini, spatial_confidence_score=sc)
 
+
+# ---------------------------------------------------------------------------
+# 4-Part Falsification Gate  (absorbed from SANDHI / Team Assassin)
+# ---------------------------------------------------------------------------
+
+FALSIFICATION_CLASSES = ('REAL', 'SHUFFLED', 'NOISE', 'FLAT')
+
+def falsification_gate(
+    img:                np.ndarray,
+    kp_min:             int   = 50,
+    laplacian_var_floor: float = 100.0,
+    std_floor:          float = 5.0,
+    entropy_ceil:       float = 7.8,
+) -> tuple[str, dict]:
+    """
+    4-Part Falsification Gate — classifies input images before feature matching.
+
+    Absorbed from SANDHI (Team Assassin) who demonstrated a falsification gate
+    that rejects Shuffled pixels, pure Noise, and Flat Gray images on camera.
+
+    Classes
+    -------
+    REAL     : Structurally plausible lunar image — proceed to matching.
+    SHUFFLED : Pixel-shuffled (structural entropy too high, no spatial keypoints).
+    NOISE    : Gaussian noise (Laplacian variance below floor).
+    FLAT     : Near-constant image (std dev < floor, zero contrast).
+
+    Args
+    ----
+    img                  : Grayscale or BGR uint8 image.
+    kp_min               : Minimum SIFT keypoints for REAL class.
+    laplacian_var_floor  : Laplacian variance threshold (NOISE test).
+    std_floor            : Pixel std dev threshold (FLAT test).
+    entropy_ceil         : Shannon entropy ceiling for SHUFFLED detection.
+
+    Returns
+    -------
+    (class_label, diagnostics_dict)
+    """
+    g = img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    g = g.astype(np.float32)
+
+    # --- FLAT: near-zero contrast ---
+    std_val = float(g.std())
+    if std_val < std_floor:
+        return 'FLAT', dict(std=std_val, reason='std < floor')
+
+    # --- NOISE: Laplacian variance (blur measure) ---
+    lap_var = float(cv2.Laplacian(g.astype(np.uint8), cv2.CV_64F).var())
+    if lap_var < laplacian_var_floor:
+        return 'NOISE', dict(laplacian_var=lap_var, reason='lap_var < floor')
+
+    # --- SHUFFLED / LOW STRUCTURE: check keypoints & spatial structure ---
+    sift = cv2.SIFT_create(nfeatures=200, contrastThreshold=0.005)
+    kps, _ = sift.detectAndCompute(g.astype(np.uint8), None)
+    n_kp = len(kps)
+
+
+    hist = cv2.calcHist([g.astype(np.uint8)], [0], None, [256], [0, 256]).ravel()
+    hist_p = hist / (hist.sum() + 1e-9)
+    entropy = float(-np.sum(hist_p * np.log2(hist_p + 1e-12)))
+
+    if n_kp < kp_min:
+        return 'SHUFFLED', dict(n_keypoints=n_kp, entropy=entropy, reason='too few keypoints')
+
+    if entropy > entropy_ceil and n_kp < kp_min * 2:
+        return 'SHUFFLED', dict(entropy=entropy, n_keypoints=n_kp, reason='high entropy with low keypoints')
+
+    return 'REAL', dict(
+        std=std_val, laplacian_var=lap_var, entropy=entropy, n_keypoints=n_kp
+    )
+
+
+
 def make_pair(dem, px_x, px_y, az_ref, el_ref, az_src, el_src, rot_deg, scale, seed=0):
     ref, _ = render_lunar(dem, px_x, px_y, az_ref, el_ref, seed=seed)
     srcd, _ = render_lunar(dem, px_x, px_y, az_src, el_src, seed=seed + 1)
@@ -157,23 +231,14 @@ def gate_v1(res: dict) -> str:
     return 'SUCCESS'
 
 
-def gate_v2(res: dict, img_shape: tuple = (640, 640)) -> str:
-    """
-    Gate v2 — Coupled Gini + Grid Coverage (architectural ruling, SIH v3).
-
-    SUCCESS requires ALL three:
-        inlier_ratio  >= 0.40    (40% of raw matches survive MAGSAC++)
-        grid_coverage >= 0.60    (tie-points span ≥60% of 8×8 field)
-        gini          <= 0.55    (quadtree Gini dispersion, 16 bins)
-
-    Uses the fused spatial confidence score:
-        Sc = grid_coverage × (1 - Gini)
-    SUCCESS:  Sc >= 0.40 and inlier_ratio >= 0.40
-    DEGRADED: Sc >= 0.15 or inlier_ratio >= 0.15
-    REFUSED:  otherwise
-    """
+def gate_v2(res, img_shape: tuple = (640, 640)):
+    if isinstance(res, np.ndarray):
+        gini = calculate_spatial_gini(res, img_shape)
+        return gini, bool(gini <= 0.55)
+    
     n_inl = res.get('n_inliers', 0)
     ratio = res.get('inlier_ratio', 0.0)
+
     # Recompute spatial confidence from raw inlier points if available
     pts   = res.get('inlier_pts', None)
     gini  = res.get('gini', None)

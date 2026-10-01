@@ -39,3 +39,23 @@ def render_lunar(dem_m, px_x_m, px_y_m, az_deg, el_deg, noise=0.01, psf_sigma=0.
 
 def to_u8(x):
     return np.clip(x * 255, 0, 255).astype(np.uint8)
+
+def render_lunar_patch(size: int = 128, sun_az: float = 45.0, sun_el: float = 30.0, crater_density: float = 0.03, scale_factor: float = 1.0, seed: int = 0) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    y, x = np.ogrid[:size, :size]
+    dem = np.zeros((size, size), dtype=np.float32)
+    num_craters = int(size * size * crater_density / 100)
+    for _ in range(max(3, num_craters)):
+        cx, cy = rng.uniform(0, size, 2)
+        r = rng.uniform(5, size / 4)
+        depth = rng.uniform(2, 10)
+        d2 = (x - cx)**2 + (y - cy)**2
+        mask = d2 < r**2
+        dem[mask] -= depth * (1 - d2[mask] / r**2)
+    if scale_factor != 1.0:
+        new_size = int(size * scale_factor)
+        dem = cv2.resize(dem, (new_size, new_size))
+        dem = dem[:size, :size] if new_size >= size else cv2.copyMakeBorder(dem, 0, size - new_size, 0, size - new_size, cv2.BORDER_REFLECT)
+    img, _ = render_lunar(dem, px_x_m=0.25, px_y_m=0.25, az_deg=sun_az, el_deg=sun_el, seed=seed)
+    return to_u8(img)
+

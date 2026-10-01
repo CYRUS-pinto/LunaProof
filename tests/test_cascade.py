@@ -157,3 +157,21 @@ def test_hop3_latency_under_250ms():
     hop3_patchnet_ecc(a, b)
     elapsed = time.perf_counter() - t0
     assert elapsed < 0.25, f"hop3_patchnet_ecc took {elapsed:.3f}s (limit 0.25s)"
+
+
+def test_iirs_pca():
+    from lunaproof.cascade import iirs_pca_pseudopan
+    cube = np.random.default_rng(42).normal(100, 20, (32, 32, 256)).clip(0, 255)
+    pan = iirs_pca_pseudopan(cube)
+    assert pan.shape == (32, 32)
+    assert pan.dtype == np.uint8
+
+
+def test_sensor_specs():
+    from lunaproof.cascade import SENSOR_SPECS
+    assert 'IIRS' in SENSOR_SPECS
+    assert 'TMC-2' in SENSOR_SPECS
+    assert 'OHRC' in SENSOR_SPECS
+    assert SENSOR_SPECS['IIRS']['gsd_m'] == 80.0
+    assert SENSOR_SPECS['OHRC']['gsd_m'] == 0.25
+

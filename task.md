@@ -19,5 +19,5 @@
 ## Housekeeping
 - [x] `requirements.txt` — add rasterio, spiceypy
 - [x] `README.md` — v3 cascade diagram + gate v2 numbers
-- [/] `git commit` — running tests first
-- [ ] All tests green (target: 13 existing + 8+ new = 21+)
+- [x] `git commit` — 8fdbbfb "feat(v3): 3-hop cascade + Gini gate v2 + GIS export + SPICE bridge"
+- [x] All tests green: **55 passed, 1 skipped** (rasterio skip expected on Windows)

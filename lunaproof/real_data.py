@@ -1,119 +1,156 @@
 """
-LunaProof – Real PDS Lunar Data Loader & Fetcher
-===============================================
-Loads and processes real planetary PDS4 data from ISRO Chandrayaan-2 (OHRC, TMC-2, IIRS)
-and NASA LRO NAC (Planetary Data System) archives for real-world benchmarking.
-
-Team Maximus2 (ID 185903) | ISRO PS 26166
+LunaProof real_data.py — v4 Standalone Real Data Loader
+Loads real LRO NAC stereo pairs from NASA PDS archive.
+Falls back to physics-correct Lommel-Seeliger synthetic generation.
 """
-
-from __future__ import annotations
-
 import os
 import cv2
 import numpy as np
 import urllib.request
-from typing import Dict, Any, Tuple, Optional
+import urllib.error
+import struct
 
-# Public Real PDS Lunar Sample Repository URLs (LRO NAC & Chandrayaan-2 PDS archives)
-REAL_PDS_SAMPLE_URLS = {
-    "LRO_NAC_SOUTH_POLE_M1141267026LE": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-2-EDR-V1.0/LROLROC_0001/data/MAP_PROJECTED/M1141267026LE.PNG",
-    "LRO_NAC_EQUATORIAL_M1141267026RE": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-2-EDR-V1.0/LROLROC_0001/data/MAP_PROJECTED/M1141267026RE.PNG",
+# Real LRO NAC stereo pair URLs (NASA PDS archive — no login required)
+LRO_NAC_PAIRS = {
+    "copernicus": {
+        "L": "https://pds.lroc.asu.edu/data/LRO-L-LROC-2-EDR-V1.0/LROLROC_0001/DATA/COM/2010121/M108974394LE.IMG",
+        "R": "https://pds.lroc.asu.edu/data/LRO-L-LROC-2-EDR-V1.0/LROLROC_0001/DATA/COM/2010121/M108974394RE.IMG",
+        "region": "Copernicus Crater Equatorial",
+    },
+    "sp_shackleton": {
+        "L": "https://pds.lroc.asu.edu/data/LRO-L-LROC-5-RDR-V1.0/LROLROC_2001/DATA/NAC_ROI/NAC_ROI_SHACKLETON_E118S8990_256P.IMG",
+        "region": "Shackleton Crater South Pole",
+    },
 }
 
 
-def load_real_lunar_pds_image(
-    source_key: str = "LRO_NAC_SOUTH_POLE_M1141267026LE",
-    cache_dir: str = "cache_pds",
-    crop_size: Tuple[int, int] = (512, 512)
-) -> np.ndarray:
+def _pds_img_to_numpy(raw_bytes, rows=512, cols=512):
+    """Parse a PDS3 .IMG file to numpy array."""
+    try:
+        label_end = raw_bytes.find(b"END\r\n") + 5
+        if label_end < 5:
+            label_end = 2048
+        block_size = 512
+        offset = ((label_end + block_size - 1) // block_size) * block_size
+        pixel_data = raw_bytes[offset: offset + rows * cols]
+        if len(pixel_data) < rows * cols:
+            pixel_data = raw_bytes[-rows * cols:]
+        img = np.frombuffer(pixel_data[: rows * cols], dtype=np.uint8).reshape(rows, cols)
+        return img
+    except Exception:
+        return None
+
+
+def _make_synthetic_lunar_pair(size=(512, 512), sun_az_delta=120, seed=42):
     """
-    Downloads/loads a real PDS Lunar imagery patch from NASA LRO NAC or local cache.
+    Generate a physics-correct Lommel-Seeliger synthetic lunar image pair.
+    Returns (img_a, img_b) with sun azimuth differing by sun_az_delta degrees.
+    Ground truth: same DEM, different illumination direction.
+    """
+    rng = np.random.default_rng(seed)
+    h, w = size
+    # Multi-scale crater field (DEM)
+    dem = np.zeros((h, w), np.float32)
+    y, x = np.ogrid[:h, :w]
+    for _ in range(30):
+        cx = rng.uniform(20, w - 20)
+        cy = rng.uniform(20, h - 20)
+        r = rng.uniform(8, min(h, w) // 5)
+        d = rng.uniform(25, 80)
+        dist = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+        dem -= d * np.exp(-(dist ** 2) / (2 * (r / 2) ** 2))
+        dem += d * 0.4 * np.exp(-((dist - r) ** 2) / (2 * (r * 0.25) ** 2))
 
-    Args:
-        source_key: Archive key name or custom local image path.
-        cache_dir: Directory to cache downloaded real PDS files.
-        crop_size: (height, width) of the cropped lunar surface patch.
+    def _shade(dem_in, sun_az, sun_el=25):
+        az_r = np.radians(sun_az)
+        el_r = np.radians(sun_el)
+        lx = np.cos(el_r) * np.sin(az_r)
+        ly = np.cos(el_r) * np.cos(az_r)
+        lz = np.sin(el_r)
+        gx = cv2.Sobel(dem_in, cv2.CV_32F, 1, 0, ksize=3)
+        gy_s = cv2.Sobel(dem_in, cv2.CV_32F, 0, 1, ksize=3)
+        mg = np.sqrt(gx ** 2 + gy_s ** 2 + 1.0)
+        nx, ny, nz = -gx / mg, -gy_s / mg, 1.0 / mg
+        ci = np.clip(nx * lx + ny * ly + nz * lz, 0, 1)
+        ce = np.clip(nz, 0.01, 1.0)
+        return np.clip((ci / (ci + ce + 1e-6)) * 255, 0, 255).astype(np.uint8)
 
-    Returns:
-        (H, W) uint8 grayscale real lunar surface image patch.
+    base_az = float(rng.uniform(30, 150))
+    img_a = _shade(dem, base_az)
+    img_b = _shade(dem, base_az + sun_az_delta)
+    return img_a, img_b
+
+
+def load_real_lro_pair(pair_key="copernicus", cache_dir="cache_pds", size=(512, 512)):
+    """
+    Attempt to download a real LRO NAC stereo pair from NASA PDS.
+    Returns (img_L, img_R, pair_info). Images may be None if download fails.
     """
     os.makedirs(cache_dir, exist_ok=True)
-    
-    if os.path.isfile(source_key):
-        img = cv2.imread(source_key, cv2.IMREAD_GRAYSCALE)
+    pair_info = LRO_NAC_PAIRS.get(pair_key, {})
+    results = {}
+    for side in ["L", "R"]:
+        url = pair_info.get(side)
+        if not url:
+            continue
+        cache_path = os.path.join(cache_dir, f"{pair_key}_{side}.png")
+        img = None
+        if os.path.isfile(cache_path):
+            img = cv2.imread(cache_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "LunaProof/4.0 (SIH26166)"}
+                )
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    raw = r.read()
+                img = _pds_img_to_numpy(raw, *size)
+                if img is not None:
+                    cv2.imwrite(cache_path, img)
+            except Exception as e:
+                print(f"    [WARN] Failed to fetch {pair_key}/{side}: {e}")
         if img is not None:
-            return cv2.resize(img, crop_size)
+            img = cv2.resize(img, size)
+        results[side] = img
+    return results.get("L"), results.get("R"), pair_info
 
-    url = REAL_PDS_SAMPLE_URLS.get(source_key, None)
-    local_path = os.path.join(cache_dir, f"{source_key}.png")
 
-    if url and not os.path.isfile(local_path):
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'LunaProof-ISRO-SIH/3.0'})
-            with urllib.request.urlopen(req, timeout=5) as response, open(local_path, 'wb') as out_file:
-                out_file.write(response.read())
-        except Exception:
-            pass  # Fall back to synthetic lunar generator if offline/network restricted
-
-    if os.path.isfile(local_path):
-        img = cv2.imread(local_path, cv2.IMREAD_GRAYSCALE)
-        if img is not None:
-            h, w = img.shape[:2]
-            ch, cw = crop_size
-            sy = max(0, (h - ch) // 2)
-            sx = max(0, (w - cw) // 2)
-            crop = img[sy:sy+ch, sx:sx+cw]
-            if crop.shape == crop_size:
-                return crop
-
-    # Fallback offline generator generating high-texture real lunar crater structure
-    rng = np.random.default_rng(2026)
-    grid_y, grid_x = np.ogrid[:crop_size[0], :crop_size[1]]
-    patch = np.full(crop_size, 110, dtype=np.float32)
-    
-    # Render realistic crater rims and ejecta blanket
-    for _ in range(12):
-        cx, cy = rng.uniform(20, crop_size[1]-20, 2)
-        r = rng.uniform(15, 60)
-        d2 = (grid_x - cx)**2 + (grid_y - cy)**2
-        rim = np.exp(-(np.sqrt(d2) - r)**2 / (2 * 3.0**2)) * 60.0
-        floor = (d2 < r**2) * (-30.0)
-        patch += (rim + floor)
-        
-    patch += rng.normal(0, 4.0, crop_size)
-    lo, hi = np.percentile(patch, [1, 99])
-    patch_u8 = np.clip((patch - lo) / (hi - lo + 1e-6) * 255.0, 0, 255).astype(np.uint8)
-    return patch_u8
+def load_real_lunar_pds_image(key="copernicus", cache_dir="cache_pds", crop_size=(512, 512)):
+    """Load a real LRO NAC image, falling back to synthetic if unavailable."""
+    img_l, img_r, info = load_real_lro_pair(key, cache_dir, crop_size)
+    if img_l is not None:
+        return img_l
+    img_a, _ = _make_synthetic_lunar_pair(crop_size, seed=2026)
+    return img_a
 
 
 class RealPDSDataFetcher:
-    """
-    Real PDS Data Fetcher and Metadata Parser.
-    """
-    def __init__(self, cache_dir: str = "cache_pds"):
+    """Fetch real LRO NAC stereo pairs. Gracefully falls back to synthetic."""
+
+    def __init__(self, cache_dir="cache_pds"):
         self.cache_dir = cache_dir
+        self._real_loaded = False
 
-    def fetch_real_pair(
-        self,
-        pair_type: str = "OHRC_vs_LRO_NAC"
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
-        """
-        Fetches a real imagery pair comparing two real sensor sources.
-        """
-        img_a = load_real_lunar_pds_image("LRO_NAC_SOUTH_POLE_M1141267026LE", cache_dir=self.cache_dir)
-        
-        # Create second image under non-rigid solar azimuth shift & rotation
-        h, w = img_a.shape
-        M = cv2.getRotationMatrix2D((w / 2, h / 2), 15.0, 1.0)
-        img_b = cv2.warpAffine(img_a, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
-        img_b = cv2.GaussianBlur(img_b, (3, 3), 0.8)
-
-        metadata = {
+    def fetch_real_pair(self, pair_type="LRO_NAC_stereo"):
+        img_l, img_r, info = load_real_lro_pair("copernicus", self.cache_dir)
+        if img_l is not None and img_r is not None:
+            self._real_loaded = True
+            return img_l, img_r, {
+                "pair_type": pair_type,
+                "source": "NASA LRO NAC PDS Archive",
+                "sensor_src": "LRO NAC-L (0.5m GSD)",
+                "sensor_ref": "LRO NAC-R (0.5m GSD)",
+                "region": info.get("region", "Copernicus"),
+                "real_pds_source": "https://pds.lroc.asu.edu/data/",
+                "is_real_pds_data": True,
+            }
+        # Fallback: physics-correct synthetic
+        img_a, img_b = _make_synthetic_lunar_pair((512, 512), sun_az_delta=90, seed=2026)
+        return img_a, img_b, {
             "pair_type": pair_type,
-            "sensor_src": "Chandrayaan-2 OHRC (0.25m)",
-            "sensor_ref": "NASA LRO NAC (0.5m)",
-            "real_pds_source": "NASA LROC PDS Archive / ISRO PRADAN",
-            "is_real_pds_data": True
+            "source": "Synthetic (LRO-style Lommel-Seeliger physics)",
+            "sensor_src": "Synthetic OHRC-equiv",
+            "sensor_ref": "Synthetic OHRC-equiv",
+            "real_pds_source": "Fallback: LRO fetch timed out",
+            "is_real_pds_data": False,
         }
-        return img_a, img_b, metadata

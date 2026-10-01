@@ -451,3 +451,79 @@ def make_synthetic_tiers(
         )
         imgs.append(to_u8(img_f))
     return imgs
+
+
+# ---------------------------------------------------------------------------
+# Chandrayaan-2 Sensor Specs & Multi-Modal IIRS Ingestion
+# ---------------------------------------------------------------------------
+
+SENSOR_SPECS = {
+    'IIRS': {
+        'name': 'Imaging Infrared Spectrometer',
+        'gsd_m': 80.0,
+        'swath_km': 7.7,
+        'bands': 256,
+        'spectral_range_um': (0.8, 5.0),
+        'hop_role': 'Hop 0 Source (80m)',
+    },
+    'TMC-2': {
+        'name': 'Terrain Mapping Camera-2',
+        'gsd_m': 5.0,
+        'swath_km': 20.0,
+        'bands': 1,
+        'spectral_range_um': (0.5, 0.85),
+        'hop_role': 'Hop 1 Target / Hop 2 Source (5m)',
+    },
+    'Bridge': {
+        'name': 'Reference Bridge (LRO NAC / Kaguya TC Proxy)',
+        'gsd_m': 1.0,
+        'swath_km': 10.0,
+        'bands': 1,
+        'spectral_range_um': (0.4, 0.9),
+        'hop_role': 'Hop 2 Target / Hop 3 Source (1m)',
+    },
+    'OHRC': {
+        'name': 'Orbiter High Resolution Camera',
+        'gsd_m': 0.25,
+        'swath_km': 3.0,
+        'bands': 1,
+        'spectral_range_um': (0.45, 0.85),
+        'hop_role': 'Hop 3 Target (0.25m)',
+    },
+}
+
+
+def iirs_pca_pseudopan(hyperspectral_cube: np.ndarray) -> np.ndarray:
+    """
+    Decouples solar reflectance (0.8–2.5 μm) from thermal emission (>2.5 μm)
+    by computing the 1st Principal Component (PCA) across reflectance bands,
+    producing a single-channel pseudo-panchromatic continuum at 80m GSD.
+
+    Absorbed for Tri-Camera Multi-Modal Integration (ISRO PS 26166).
+
+    Args:
+        hyperspectral_cube: (H, W, B) array with B bands (e.g. 256 bands for IIRS).
+
+    Returns:
+        uint8 single-channel pseudo-panchromatic image (H, W).
+    """
+    if hyperspectral_cube.ndim == 2:
+        return hyperspectral_cube.astype(np.uint8)
+
+    H, W, B = hyperspectral_cube.shape
+    ref_bands = hyperspectral_cube[:, :, :min(B, 120)].reshape(H * W, -1).astype(np.float32)
+    mean_b = ref_bands.mean(axis=0, keepdims=True)
+    centered = ref_bands - mean_b
+
+    vec = np.ones((centered.shape[1], 1), dtype=np.float32)
+    for _ in range(5):
+        vec = centered.T @ (centered @ vec)
+        vec /= (np.linalg.norm(vec) + 1e-9)
+
+    pc1 = (centered @ vec).reshape(H, W)
+    pc1_min, pc1_max = pc1.min(), pc1.max()
+    if pc1_max - pc1_min < 1e-6:
+        return np.zeros((H, W), dtype=np.uint8)
+    norm = ((pc1 - pc1_min) / (pc1_max - pc1_min) * 255.0).clip(0, 255).astype(np.uint8)
+    return norm
+
